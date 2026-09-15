@@ -2,14 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   RotateCcw, 
   ExternalLink, 
-  MoreHorizontal, 
   X, 
   Plus, 
   ArrowUp, 
-  Monitor, 
   Mic, 
-  MessageSquare,
-  Sparkles
+  ChevronDown,
+  Sparkles,
+  Code,
+  Compass,
+  Cpu
 } from 'lucide-react';
 import { PersonaType, ChatMessage } from '../types';
 
@@ -22,84 +23,45 @@ interface AgentChatPanelProps {
 }
 
 export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
-  persona,
-  accentColor,
+  persona = 'MAY',
+  accentColor = '#ff7a00',
   onClose,
   onVoiceTrigger,
   isVoiceActive = false,
 }) => {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [actionsMode, setActionsMode] = useState<'AUTO' | 'MANUAL' | 'DIRECT'>('AUTO');
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Zoey chat seed matching Screenshot 3
-  const [zoeyMessages, setZoeyMessages] = useState<ChatMessage[]>([
-    {
-      id: 'z-1',
-      sender: 'user',
-      agentName: 'You',
-      text: 'hello',
-      timestamp: '22 hours ago',
-      avatarLetter: 'J',
-    },
-    {
-      id: 'z-2',
-      sender: 'agent',
-      agentName: 'Zoey',
-      text: "Hey there! I'm Zoey, your companion. I'm here to help you build those clean, minimalist websites you're working toward—whether that's design, content, strategy, or the whole workflow.\n\nWhat's on your mind right now?",
-      timestamp: '22 hours ago',
-      avatarLetter: 'Z',
-    },
-    {
-      id: 'z-3',
-      sender: 'user',
-      agentName: 'You',
-      text: 'Hello.',
-      timestamp: '22 hours ago',
-      avatarLetter: 'J',
-    },
-    {
-      id: 'z-4',
-      sender: 'agent',
-      agentName: 'Zoey',
-      text: "Hey, how's it going? What can I help you with?",
-      timestamp: '22 hours ago',
-      avatarLetter: 'Z',
-    },
-    {
-      id: 'z-5',
-      sender: 'user',
-      agentName: 'You',
-      text: 'Open YouTube.',
-      timestamp: '22 hours ago',
-      avatarLetter: 'J',
-    },
-    {
-      id: 'z-6',
-      sender: 'agent',
-      agentName: 'Zoey',
-      text: "I'll open YouTube for you.\n\nA card's waiting on your screen, just allow it there and I'll open YouTube for you.",
-      timestamp: '22 hours ago',
-      avatarLetter: 'Z',
-    },
-    {
-      id: 'z-7',
-      sender: 'user',
-      agentName: 'You',
-      text: 'Open game.',
-      timestamp: '22 hours ago',
-      avatarLetter: 'J',
-    },
-  ]);
-
-  // May chat seed (initially empty terminal ready state as in Screenshot 5)
-  const [mayMessages, setMayMessages] = useState<ChatMessage[]>([]);
-
-  const activeMessages = persona === 'MAY' ? mayMessages : zoeyMessages;
+  // Fresh, clean chat history with no prior messages
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeMessages, isTyping]);
+  }, [messages, isTyping]);
+
+  const generateMayResponse = (input: string) => {
+    const lower = input.toLowerCase();
+    if (lower.includes('website') || lower.includes('build') || lower.includes('create')) {
+      return "I'm orchestrating the website scaffolding for you now. I'll maintain a clean, minimal design aesthetic with high contrast and zero friction. Would you like me to focus on copy, layout, or backend integration first?";
+    }
+    if (lower.includes('youtube')) {
+      return "Opening YouTube for you now. A direct authorization card has been registered.";
+    }
+    if (lower.includes('game') || lower.includes('app')) {
+      return "I've routed the application request. Once approved in your system permissions, it will launch automatically.";
+    }
+    if (lower.includes('hello') || lower.includes('hey') || lower.includes('hi')) {
+      return "Hey there! I'm May. I'm ready to help you orchestrate websites, automate workflows, or manage your neural memory. What shall we tackle?";
+    }
+    if (lower.includes('who are you') || lower.includes('what can you do')) {
+      return "I am May, an autonomous synthetic intelligence operating system. I assist with website engineering, digital strategy, audio orchestration, and autonomous execution.";
+    }
+    return `Understood: "${input}". I have dispatched workers to orchestrate this task across the system telemetry. Everything is running cleanly.`;
+  };
 
   const handleSendMessage = (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
@@ -112,52 +74,28 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
       text,
       timestamp: 'Just now',
       avatarLetter: 'J',
+      isVoice: isVoiceActive,
     };
 
-    if (persona === 'MAY') {
-      setMayMessages((prev) => [...prev, userMsg]);
-    } else {
-      setZoeyMessages((prev) => [...prev, userMsg]);
-    }
-
-    setInputText('');
+    setMessages((prev) => [...prev, userMsg]);
+    if (!textToSend) setInputText('');
+    setShowQuickActions(false);
     setIsTyping(true);
 
-    // Dynamic simulated response
     setTimeout(() => {
-      let replyText = '';
-      if (persona === 'MAY') {
-        if (text.toLowerCase().includes('workflow') || text.toLowerCase().includes('run')) {
-          replyText = `Synthesizing neural execution pipeline for "${text}". Allocating 4 background micro-workers and syncing telemetry.`;
-        } else if (text.toLowerCase().includes('sphere') || text.toLowerCase().includes('fibonacci')) {
-          replyText = `The 3D Fibonacci particle cloud is computing at 60 FPS using golden-angle distribution (137.5°), dynamic radial bloom, and harmonic deformation.`;
-        } else {
-          replyText = `Command received. Orchestrating sub-routines and streaming telemetry updates to the console panel.`;
-        }
-      } else {
-        if (text.toLowerCase().includes('memory') || text.toLowerCase().includes('brain')) {
-          replyText = `I have logged that into your constellation under active memory nodes. You can inspect the orbit in the Brain view anytime!`;
-        } else {
-          replyText = `Got it! I've updated your workspace context. Let me know if you want me to preview the changes or launch additional tools.`;
-        }
-      }
-
+      const reply = generateMayResponse(text);
       const agentMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'agent',
-        agentName: persona === 'MAY' ? 'May' : 'Zoey',
-        text: replyText,
+        agentName: 'May',
+        text: reply,
         timestamp: 'Just now',
-        avatarLetter: persona === 'MAY' ? 'M' : 'Z',
+        avatarLetter: 'M',
+        isVoice: isVoiceActive,
       };
-
-      if (persona === 'MAY') {
-        setMayMessages((prev) => [...prev, agentMsg]);
-      } else {
-        setZoeyMessages((prev) => [...prev, agentMsg]);
-      }
+      setMessages((prev) => [...prev, agentMsg]);
       setIsTyping(false);
-    }, 900);
+    }, 700);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -170,178 +108,241 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
   return (
     <aside 
       id="right-chat-panel"
-      className="w-full h-full flex flex-col justify-between bg-[#0d0d12]/95 backdrop-blur-xl border-l border-white/5 text-[#e5e1e4] select-none"
+      className="w-full h-full flex flex-col justify-between bg-[#08080a] border-l border-[#1a1a24] text-[#e5e1e4] select-none"
     >
-      {/* ================= HEADER ================= */}
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/5 bg-[#0e0e13]/60">
+      {/* ================= HEADER (● MAY   ↻ ⤢ ● ×) ================= */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#14141e] bg-[#08080a]">
         <div className="flex items-center gap-2">
           <span 
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: accentColor, boxShadow: `0 0 6px ${accentColor}` }}
           />
-          <span className="font-mono text-xs font-bold tracking-[0.2em] text-[#ffb68b] uppercase">
-            {persona}
+          <span className="font-mono text-xs font-bold tracking-[0.22em] text-[#e5e1e4] uppercase">
+            MAY
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-zinc-500">
+        <div className="flex items-center gap-2 text-zinc-500">
           <button 
-            title="Refresh feed"
-            onClick={() => {
-              if (persona === 'MAY') setMayMessages([]);
-            }}
+            title="Reset history"
+            onClick={() => setMessages([])}
             className="hover:text-white p-1 transition-colors"
           >
             <RotateCcw size={13} />
           </button>
-          <button title="Pop out" className="hover:text-white p-1 transition-colors">
-            <ExternalLink size={13} />
+          <button 
+            title="Toggle Voice"
+            onClick={onVoiceTrigger}
+            className={`p-1 transition-colors ${isVoiceActive ? 'text-[#ff7a00]' : 'hover:text-white'}`}
+          >
+            <Mic size={13} />
           </button>
-          <button title="More options" className="hover:text-white p-1 transition-colors">
-            <MoreHorizontal size={13} />
-          </button>
+          {/* Status dot */}
+          <span 
+            className="w-1.5 h-1.5 rounded-full" 
+            style={{ backgroundColor: accentColor }}
+          />
           <button 
             onClick={onClose} 
             title="Close" 
-            className="hover:text-white p-1 transition-colors ml-1"
+            className="hover:text-white p-1 transition-colors"
           >
-            <X size={13} />
+            <X size={14} />
           </button>
         </div>
       </div>
 
-      {/* ================= CHAT FEED / TERMINAL READY ================= */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {persona === 'MAY' && mayMessages.length === 0 ? (
-          /* Empty state terminal matching Screenshot 5 */
-          <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className="w-10 h-10 rounded-full bg-[#1e1a14] border border-[#ff7a00]/30 flex items-center justify-center text-[#ff7a00] mb-3 shadow-[0_0_16px_rgba(255,122,0,0.15)]">
-              <MessageSquare size={16} />
+      {/* ================= CHAT FEED ================= */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4 text-zinc-500">
+            <div 
+              className="w-12 h-12 rounded-2xl flex items-center justify-center font-mono font-bold text-lg"
+              style={{
+                backgroundColor: 'rgba(255, 122, 0, 0.1)',
+                border: `1px solid ${accentColor}40`,
+                color: accentColor,
+              }}
+            >
+              M
             </div>
-            <h3 className="font-mono text-xs font-bold tracking-[0.18em] text-white uppercase mb-2">
-              MAY TERMINAL READY
-            </h3>
-            <p className="text-xs text-zinc-400 font-mono max-w-[260px] leading-relaxed">
-              Ask May to run workflows, manage goals, launch applications, or orchestrate tools.
-            </p>
-
-            {/* Suggested quick actions */}
-            <div className="flex flex-wrap gap-1.5 justify-center mt-6">
-              {['Launch workflow', 'Inspect Fibonacci cloud', 'Open YouTube'].map((prompt) => (
+            <div className="space-y-1">
+              <h3 className="text-white text-sm font-medium tracking-wide">May is ready</h3>
+              <p className="text-xs text-zinc-500 font-mono">
+                Ask to build websites, configure strategy, or orchestrate tools.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 w-full pt-2">
+              {[
+                'Build clean minimalist website',
+                'Analyze system strategy',
+                'Open automations manager',
+              ].map((suggestion, idx) => (
                 <button
-                  key={prompt}
-                  onClick={() => handleSendMessage(prompt)}
-                  className="px-2.5 py-1 rounded-full bg-[#181622] hover:bg-[#252233] border border-white/5 text-[11px] font-mono text-zinc-300 transition-colors"
+                  key={idx}
+                  onClick={() => handleSendMessage(suggestion)}
+                  className="px-3 py-2 rounded-xl bg-[#121118] hover:bg-[#181822] border border-white/5 hover:border-white/10 text-xs text-zinc-400 hover:text-white text-left transition-colors font-mono"
                 >
-                  {prompt}
+                  › {suggestion}
                 </button>
               ))}
             </div>
           </div>
         ) : (
-          /* Conversational Messages */
-          <div className="space-y-4 pt-1">
-            {activeMessages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${
-                  msg.sender === 'user' ? 'items-end' : 'items-start'
-                }`}
-              >
-                {msg.sender === 'user' ? (
-                  /* User Message Bubble */
-                  <div className="flex items-end gap-2 max-w-[85%]">
-                    <div className="px-3.5 py-2 rounded-xl bg-[#1d1c2b] text-zinc-200 text-xs leading-relaxed border border-white/5">
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex flex-col ${
+                msg.sender === 'user' ? 'items-end' : 'items-start'
+              }`}
+            >
+              {msg.sender === 'user' ? (
+                /* User Bubble */
+                <div className="flex flex-col items-end gap-1 max-w-[90%]">
+                  <div className="flex items-center gap-2">
+                    <div className="px-4 py-2 rounded-xl bg-[#14141c] text-white text-sm font-normal border border-[#222230]">
                       {msg.text}
                     </div>
-                    <div className="w-5 h-5 rounded-full bg-zinc-800 text-[10px] text-zinc-300 font-mono flex items-center justify-center">
+                    <div className="w-5 h-5 rounded-md bg-[#121218] border border-[#222230] text-[10px] text-zinc-400 font-mono flex items-center justify-center shrink-0">
                       {msg.avatarLetter || 'J'}
                     </div>
                   </div>
-                ) : (
-                  /* Agent Message Bubble */
-                  <div className="flex items-start gap-2 max-w-[90%]">
+                  <div className="flex items-center gap-1 text-[11px] font-mono text-zinc-500 pr-7">
+                    {msg.isVoice && <Mic size={10} className="text-[#ff7a00]" />}
+                    <span>{msg.timestamp}</span>
+                  </div>
+                </div>
+              ) : (
+                /* May Bubble */
+                <div className="flex flex-col items-start gap-1 max-w-[95%]">
+                  <div className="flex items-start gap-2.5">
                     <div 
                       className="w-5 h-5 rounded-full text-[10px] font-mono font-bold flex items-center justify-center shrink-0 mt-0.5"
                       style={{ 
-                        backgroundColor: persona === 'MAY' ? 'rgba(255, 122, 0, 0.2)' : 'rgba(138, 43, 226, 0.25)',
+                        backgroundColor: 'rgba(255, 122, 0, 0.15)',
                         color: accentColor,
-                        border: `1px solid ${accentColor}40`
+                        border: `1px solid ${accentColor}50`
                       }}
                     >
-                      {msg.avatarLetter || (persona === 'MAY' ? 'M' : 'Z')}
+                      M
                     </div>
-                    <div className="space-y-1">
-                      <div className="px-3.5 py-2.5 rounded-xl bg-[#14131d] text-zinc-200 text-xs leading-relaxed border border-white/5 whitespace-pre-line">
-                        {msg.text}
-                      </div>
+                    <div className="text-zinc-200 text-sm leading-relaxed whitespace-pre-line font-sans">
+                      {msg.text}
                     </div>
                   </div>
-                )}
-                <span className="text-[10px] font-mono text-zinc-500 mt-1 px-1">
-                  {msg.timestamp}
-                </span>
-              </div>
-            ))}
+                  <div className="flex items-center gap-1 text-[11px] font-mono text-zinc-500 pl-7">
+                    {msg.isVoice && <Mic size={10} className="text-[#ff7a00]" />}
+                    <span>{msg.timestamp}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
 
-            {isTyping && (
-              <div className="flex items-center gap-2 text-zinc-500 text-xs font-mono pl-1">
-                <span className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
-                <span>{persona} is thinking...</span>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+        {isTyping && (
+          <div className="flex items-center gap-2 text-zinc-500 text-xs font-mono pl-7">
+            <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
+            <span>May is responding...</span>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* ================= FOOTER & CHAT INPUT ================= */}
-      <div className="p-3 border-t border-white/5 bg-[#0e0e13]/80 space-y-2">
-        <div className="relative flex items-center gap-2">
-          {/* Plus trigger button */}
+      {/* ================= FOOTER ================= */}
+      <div className="p-4 border-t border-[#14141e] bg-[#08080a] space-y-2 relative">
+        {/* Quick action popup */}
+        {showQuickActions && (
+          <div className="absolute bottom-16 left-4 right-4 p-2 bg-[#121118] border border-white/10 rounded-xl shadow-2xl z-40 space-y-1">
+            <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 uppercase tracking-wider">Quick Actions</div>
+            <button
+              onClick={() => handleSendMessage('Build clean minimalist website')}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-300 hover:text-white hover:bg-white/5"
+            >
+              <Code size={13} className="text-[#ff7a00]" />
+              <span>Build Minimalist Website</span>
+            </button>
+            <button
+              onClick={() => handleSendMessage('Run strategy and performance audit')}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-300 hover:text-white hover:bg-white/5"
+            >
+              <Compass size={13} className="text-[#ff7a00]" />
+              <span>Strategy & Audit</span>
+            </button>
+            <button
+              onClick={() => handleSendMessage('Check autonomous worker telemetry')}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-300 hover:text-white hover:bg-white/5"
+            >
+              <Cpu size={13} className="text-[#ff7a00]" />
+              <span>Worker Telemetry</span>
+            </button>
+          </div>
+        )}
+
+        <div className="relative flex items-center bg-[#111117] border border-[#222230] rounded-xl px-3 py-2">
+          {/* Plus icon */}
           <button 
-            title="Attach or execute tool"
-            className="w-8 h-8 rounded-lg bg-[#181624] hover:bg-[#252236] border border-white/5 text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
+            title="Quick actions & tools"
+            onClick={() => setShowQuickActions(!showQuickActions)}
+            className="text-zinc-500 hover:text-white transition-colors mr-2 shrink-0"
           >
-            <Plus size={14} />
+            <Plus size={16} />
           </button>
 
-          {/* Input pill */}
-          <div className="relative flex-1 flex items-center">
-            <input
-              type="text"
-              placeholder={`Message ${persona === 'MAY' ? 'May' : 'Zoey'}...`}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="w-full pl-3 pr-9 py-2 bg-[#171622] border border-white/5 rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-orange-500/40 transition-colors"
-            />
-            {inputText.trim() && (
-              <button
-                onClick={() => handleSendMessage()}
-                title="Send message"
-                className="absolute right-2 p-1 rounded-md text-white hover:scale-105 transition-transform"
-                style={{ backgroundColor: accentColor }}
-              >
-                <ArrowUp size={13} />
-              </button>
-            )}
-          </div>
+          {/* Input field */}
+          <input
+            type="text"
+            placeholder="Message May..."
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full bg-transparent text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none font-sans"
+          />
 
-          {/* Show desktop button (Zoey mode, Screenshot 3) */}
-          {persona === 'ZOEY' && (
-            <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#181624] hover:bg-[#252236] border border-white/5 text-[11px] font-mono text-zinc-300 transition-colors whitespace-nowrap shrink-0">
-              <Monitor size={12} />
-              <span className="hidden sm:inline">Show desktop</span>
-            </button>
-          )}
+          {/* Circular send arrow */}
+          <button
+            onClick={() => handleSendMessage()}
+            disabled={!inputText.trim()}
+            title="Send message"
+            className={`w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0 ${
+              inputText.trim()
+                ? 'bg-[#ff7a00] text-black shadow-md hover:scale-105'
+                : 'bg-[#181822] text-zinc-600'
+            }`}
+          >
+            <ArrowUp size={13} />
+          </button>
         </div>
 
-        {/* Status sub-label (Screenshot 5) */}
-        <div className="flex items-center justify-end gap-2 text-[10px] font-mono text-zinc-500 pr-1">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
-          <span className="tracking-wider uppercase text-zinc-400 font-semibold">ACTIONS AUTO</span>
-          <span>v2.0.0</span>
+        {/* Bottom status line: ● ACTIONS AUTO ˅   v2.0.0 */}
+        <div className="flex items-center justify-end gap-3 text-[11px] font-mono pt-1 relative">
+          <div 
+            onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+            className="flex items-center gap-1.5 cursor-pointer text-[#ff7a00] hover:text-[#ff9a3c] transition-colors"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00]" />
+            <span className="font-bold tracking-wider uppercase text-[10px]">ACTIONS {actionsMode}</span>
+            <ChevronDown size={11} />
+          </div>
+
+          {showActionsDropdown && (
+            <div className="absolute right-12 bottom-6 bg-[#121118] border border-white/10 rounded-lg p-1 shadow-xl z-50 text-[11px] font-mono">
+              {(['AUTO', 'MANUAL', 'DIRECT'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => {
+                    setActionsMode(mode);
+                    setShowActionsDropdown(false);
+                  }}
+                  className={`block w-full text-left px-3 py-1 rounded hover:bg-white/5 ${actionsMode === mode ? 'text-[#ff7a00]' : 'text-zinc-400'}`}
+                >
+                  ACTIONS {mode}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <span className="text-zinc-600 text-[10px]">v2.0.0</span>
         </div>
       </div>
     </aside>

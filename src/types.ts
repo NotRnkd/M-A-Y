@@ -1,4 +1,4 @@
-export type PersonaType = 'MAY' | 'ZOEY';
+export type PersonaType = 'MAY';
 
 export type CenterViewMode = 'SPHERE' | 'BRAIN';
 
@@ -10,7 +10,10 @@ export interface ChatMessage {
   timestamp: string;
   statusBadge?: string;
   avatarLetter?: string;
+  isVoice?: boolean;
 }
+
+export type TimeRangeFilter = '24h' | '7d' | '30d' | 'All';
 
 export interface MemoryNode {
   id: string;
@@ -28,11 +31,7 @@ export interface MemoryNode {
 export type SettingsTab = 
   | 'account'
   | 'persona'
-  | 'preferences'
-  | 'machine'
-  | 'channels'
-  | 'plans'
-  | 'credits';
+  | 'preferences';
 
 export type IdentitySubTab = 'IDENTITY' | 'SKILLS' | 'VOICE' | 'ABILITIES';
 

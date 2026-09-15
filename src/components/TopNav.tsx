@@ -3,11 +3,8 @@ import {
   Globe, 
   Bell, 
   Search, 
-  Settings as SettingsIcon, 
   PanelLeft, 
   PanelRight,
-  Brain,
-  Layers,
   Sparkles
 } from 'lucide-react';
 import { PersonaType, CenterViewMode } from '../types';
@@ -35,142 +32,127 @@ export const TopNav: React.FC<TopNavProps> = ({
   onToggleLeftPanel,
   rightPanelOpen,
   onToggleRightPanel,
-  accentColor,
+  accentColor = '#ff7a00',
 }) => {
+  const [showNetworkInfo, setShowNetworkInfo] = React.useState(false);
+  const [showNotifications, setShowNotifications] = React.useState(false);
+
   return (
     <header 
       id="system-top-nav"
-      className="h-12 w-full px-4 sm:px-6 flex items-center justify-between bg-[#08080a] border-b border-white/5 z-30 select-none"
+      className="h-12 w-full px-6 flex items-center justify-between bg-[#08080a] border-b border-[#14141e] z-30 select-none relative"
     >
-      {/* LEFT: LOGO & MOBILE TOGGLE */}
+      {/* LEFT: EXACT BRAND LOGO (MAY_OS ™) */}
       <div className="flex items-center gap-3">
-        {/* Toggle Left Sidebar on Mobile/Desktop */}
+        {/* Mobile/Quick panel toggle */}
         <button
           onClick={onToggleLeftPanel}
-          className={`p-1.5 rounded-md transition-colors ${
+          className={`lg:hidden p-1.5 rounded-md transition-colors ${
             leftPanelOpen ? 'text-white bg-white/5' : 'text-zinc-500 hover:text-zinc-300'
           }`}
-          title="Toggle Console Panel"
+          title="Toggle Console"
         >
           <PanelLeft size={16} />
         </button>
 
-        {/* Dynamic System Logo */}
         <div 
-          onClick={onTogglePersona}
+          onClick={onToggleCenterMode}
           className="flex items-baseline cursor-pointer group"
-          title="Click to switch between MAY_OS and ZOEY_OS"
+          title="Click to toggle between Orchestrator Sphere and Brain Memory view"
         >
           <span 
-            className="font-mono text-sm sm:text-base font-bold tracking-[0.14em] uppercase transition-colors"
+            className="font-mono text-sm sm:text-base font-bold tracking-[0.16em] uppercase transition-colors"
             style={{ color: accentColor }}
           >
-            {persona}_OS
+            MAY_OS
           </span>
-          <span className="font-mono text-[9px] text-zinc-500 ml-0.5 group-hover:text-zinc-300">
+          <span 
+            className="font-mono text-[10px] ml-1 transition-colors"
+            style={{ color: accentColor }}
+          >
             ™
           </span>
         </div>
+      </div>
 
-        {/* View Switcher Badge (Sphere vs Brain) */}
-        <button
-          onClick={onToggleCenterMode}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-[#14141d] border border-white/5 text-zinc-300 hover:text-white hover:border-white/10 transition-colors ml-2"
-          title="Toggle between 3D Fibonacci Particle Cloud and Neural Memory Brain"
-        >
-          {centerMode === 'SPHERE' ? (
-            <>
-              <Layers size={11} style={{ color: accentColor }} />
-              <span>SPHERE CLOUD</span>
-            </>
-          ) : (
-            <>
-              <Brain size={11} className="text-purple-400" />
-              <span>BRAIN ORBIT</span>
-            </>
+      {/* RIGHT UTILITIES: Globe, Bell, Search, J avatar */}
+      <div className="flex items-center gap-4 relative">
+        {/* Globe Network */}
+        <div className="relative">
+          <button 
+            title="Network Connection (Active)"
+            onClick={() => setShowNetworkInfo(!showNetworkInfo)}
+            className="text-zinc-400 hover:text-white transition-colors p-1 flex items-center gap-1"
+          >
+            <Globe size={16} />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </button>
+          {showNetworkInfo && (
+            <div className="absolute right-0 top-9 w-60 p-3 bg-[#111117] border border-white/10 rounded-xl shadow-xl text-xs z-50 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between text-zinc-300 font-mono text-[11px] pb-1 border-b border-white/5">
+                <span>NEURAL LINK</span>
+                <span className="text-emerald-400">ONLINE</span>
+              </div>
+              <div className="mt-2 space-y-1 text-zinc-400 text-[11px] font-mono">
+                <div>Latency: 14ms</div>
+                <div>Protocol: WebSockets v2</div>
+                <div>Status: Connected to May Core</div>
+              </div>
+            </div>
           )}
-        </button>
-      </div>
+        </div>
 
-      {/* CENTER: PERSONA SWITCHER PILL */}
-      <div className="flex items-center gap-1 bg-[#12121a] p-0.5 rounded-full border border-white/5 text-xs font-mono">
-        <button
-          onClick={() => persona !== 'MAY' && onTogglePersona()}
-          className={`px-3 py-1 rounded-full text-[11px] transition-colors ${
-            persona === 'MAY'
-              ? 'bg-[#221c16] text-[#ffb68b] border border-[#ff7a00]/30 font-semibold shadow-sm'
-              : 'text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          MAY
-        </button>
-        <button
-          onClick={() => persona !== 'ZOEY' && onTogglePersona()}
-          className={`px-3 py-1 rounded-full text-[11px] transition-colors ${
-            persona === 'ZOEY'
-              ? 'bg-[#1e1828] text-purple-300 border border-purple-500/30 font-semibold shadow-sm'
-              : 'text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          ZOEY
-        </button>
-      </div>
-
-      {/* RIGHT UTILITIES */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Globe Network status */}
-        <button 
-          title="Network: 24ms Low Latency EU-West"
-          className="p-1.5 text-zinc-400 hover:text-white transition-colors"
-        >
-          <Globe size={16} />
-        </button>
-
-        {/* Notifications */}
-        <button 
-          title="System Notifications: 0 Active"
-          className="p-1.5 text-zinc-400 hover:text-white transition-colors relative"
-        >
-          <Bell size={16} />
-          <span 
-            className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: accentColor }}
-          />
-        </button>
+        {/* Notifications Bell */}
+        <div className="relative">
+          <button 
+            title="Notifications"
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="text-zinc-400 hover:text-white transition-colors p-1 relative"
+          >
+            <Bell size={16} />
+            <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#ff7a00]" />
+          </button>
+          {showNotifications && (
+            <div className="absolute right-0 top-9 w-72 p-3 bg-[#111117] border border-white/10 rounded-xl shadow-xl text-xs z-50 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between text-zinc-300 font-mono text-[11px] pb-2 border-b border-white/5">
+                <span>SYSTEM EVENTS</span>
+                <span className="text-[10px] text-zinc-500">All clear</span>
+              </div>
+              <div className="mt-2 space-y-2">
+                <div className="p-2 rounded-lg bg-white/5 text-[11px]">
+                  <div className="text-white font-medium">May Orchestrator Active</div>
+                  <div className="text-zinc-400 text-[10px] mt-0.5">3D particle sphere initialized in optimal render state.</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Search */}
         <button 
-          title="Search Command Palette"
-          className="p-1.5 text-zinc-400 hover:text-white transition-colors"
+          onClick={onToggleCenterMode}
+          title="Search / Switch to Brain Memory"
+          className="text-zinc-400 hover:text-white transition-colors p-1"
         >
           <Search size={16} />
         </button>
 
-        {/* Settings Button */}
+        {/* User Profile avatar J (opens Settings) */}
         <button 
           onClick={onOpenSettings}
-          title="Open System Settings"
-          className="p-1.5 text-zinc-400 hover:text-white transition-colors"
-        >
-          <SettingsIcon size={16} />
-        </button>
-
-        {/* User Avatar circle 'J' */}
-        <button 
-          onClick={onOpenSettings}
-          title="Profile: User J"
-          className="w-7 h-7 ml-1 rounded-full bg-[#181822] border border-white/10 text-xs font-mono text-zinc-200 flex items-center justify-center hover:border-white/20 transition-colors"
+          title="Settings / Configure May"
+          className="w-7 h-7 rounded-full bg-[#121218] border border-[#262638] text-xs font-mono text-zinc-300 flex items-center justify-center hover:border-white/30 transition-colors"
         >
           J
         </button>
 
-        {/* Toggle Right Chat on Mobile/Desktop */}
+        {/* Mobile chat panel toggle */}
         <button
           onClick={onToggleRightPanel}
-          className={`p-1.5 rounded-md transition-colors ${
+          className={`lg:hidden p-1.5 rounded-md transition-colors ${
             rightPanelOpen ? 'text-white bg-white/5' : 'text-zinc-500 hover:text-zinc-300'
           }`}
-          title="Toggle Chat Panel"
+          title="Toggle Chat"
         >
           <PanelRight size={16} />
         </button>

@@ -1,5 +1,5 @@
 {
-  "name": "Synthetic Intelligence OS",
+  "name": "MAY OS",
   "description": "Autonomous operating intelligence system featuring a 3D Fibonacci-sphere particle cloud, neural memory constellation, and command telemetry.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

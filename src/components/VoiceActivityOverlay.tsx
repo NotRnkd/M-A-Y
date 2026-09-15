@@ -31,15 +31,16 @@ export const VoiceActivityOverlay: React.FC<VoiceActivityProps> = ({
 
   return (
     <div className="flex flex-col items-center">
-      {/* Top Floating Pill Trigger (Matching Screenshots 3 & 5) */}
-      <button
+      {/* Top Floating Pill Indicator */}
+      <div
         id="spacebar-voice-pill"
-        onClick={onToggle}
-        className={`group flex items-center gap-2.5 px-5 py-2 rounded-full border transition-all shadow-lg backdrop-blur-md ${
+        onClick={isActive ? onToggle : undefined}
+        className={`group flex items-center gap-2.5 px-5 py-2 rounded-full border transition-all shadow-lg backdrop-blur-md select-none ${
           isActive
-            ? 'bg-[#1e1710]/95 border-[#ff7a00] text-white shadow-[0_0_24px_rgba(255,122,0,0.35)]'
-            : 'bg-[#101015]/80 hover:bg-[#181822] border-white/10 hover:border-white/20 text-zinc-300'
+            ? 'bg-[#1e1710]/95 border-[#ff7a00] text-white shadow-[0_0_24px_rgba(255,122,0,0.35)] cursor-pointer'
+            : 'bg-[#101015]/80 border-white/10 text-zinc-300 cursor-default'
         }`}
+        title={isActive ? 'Click to stop listening' : 'Press Spacebar on your keyboard to speak'}
       >
         <span
           className={`w-2 h-2 rounded-full transition-all ${
@@ -50,7 +51,7 @@ export const VoiceActivityOverlay: React.FC<VoiceActivityProps> = ({
         <span className="font-mono text-xs font-bold tracking-[0.18em] text-[#ffb68b] uppercase">
           {isActive ? 'LISTENING...' : 'SPACEBAR FOR VOICE'}
         </span>
-      </button>
+      </div>
 
       {/* Floating Audio Waveform when active */}
       {isActive && (

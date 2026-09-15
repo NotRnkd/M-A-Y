@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PersonaType, CenterViewMode } from './types';
@@ -11,47 +11,28 @@ import { SettingsModal } from './components/SettingsModal';
 import { VoiceActivityOverlay } from './components/VoiceActivityOverlay';
 
 export default function App() {
-  // OS & View State
+  // Mode: Default to MAY with SPHERE
   const [persona, setPersona] = useState<PersonaType>('MAY');
   const [centerMode, setCenterMode] = useState<CenterViewMode>('SPHERE');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Layout Panels
+  // Panels: Left Console & Right Chat are both open by default
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
-  // Theme & Identity configuration
+  // Theme Colors matching design
   const [accentColor, setAccentColor] = useState('#ff7a00');
   const [glowColor, setGlowColor] = useState('#ffb68b');
   const [systemPrompt, setSystemPrompt] = useState(
-    'You are Zoey, an advanced autonomous operating intelligence...'
+    'You are May, an advanced autonomous operating intelligence designed to help build clean, minimalist websites, content, strategy, and orchestration.'
   );
 
   // Voice State
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [voiceLevel, setVoiceLevel] = useState(0.4);
 
-  // Page index for pagination dots: 0 = MAY Sphere, 1 = ZOEY Brain, 2 = Settings
+  // Page index: 0 = SPHERE, 1 = BRAIN, 2 = SETTINGS
   const [activePageIndex, setActivePageIndex] = useState(0);
-
-  // Synchronize persona with center mode on toggle
-  const handleTogglePersona = () => {
-    if (persona === 'MAY') {
-      setPersona('ZOEY');
-      setCenterMode('BRAIN');
-      setActivePageIndex(1);
-      setAccentColor('#8a2be2');
-      setGlowColor('#d8b4fe');
-      setSystemPrompt('You are Zoey, an advanced autonomous operating intelligence...');
-    } else {
-      setPersona('MAY');
-      setCenterMode('SPHERE');
-      setActivePageIndex(0);
-      setAccentColor('#ff7a00');
-      setGlowColor('#ffb68b');
-      setSystemPrompt('You are May, an autonomous orchestrator and execution intelligence...');
-    }
-  };
 
   const handleToggleCenterMode = () => {
     if (centerMode === 'SPHERE') {
@@ -63,36 +44,17 @@ export default function App() {
     }
   };
 
-  // Switch between pages via arrow buttons or dots
   const handleNavigatePage = (direction: 'prev' | 'next') => {
     if (direction === 'prev') {
-      if (activePageIndex === 1) {
-        setPersona('MAY');
-        setCenterMode('SPHERE');
-        setActivePageIndex(0);
-        setAccentColor('#ff7a00');
-        setGlowColor('#ffb68b');
-      } else if (activePageIndex === 2) {
-        setIsSettingsOpen(false);
-        setCenterMode('BRAIN');
-        setPersona('ZOEY');
-        setActivePageIndex(1);
-      }
+      setCenterMode('SPHERE');
+      setActivePageIndex(0);
     } else {
-      if (activePageIndex === 0) {
-        setPersona('ZOEY');
-        setCenterMode('BRAIN');
-        setActivePageIndex(1);
-        setAccentColor('#8a2be2');
-        setGlowColor('#d8b4fe');
-      } else if (activePageIndex === 1) {
-        setIsSettingsOpen(true);
-        setActivePageIndex(2);
-      }
+      setCenterMode('BRAIN');
+      setActivePageIndex(1);
     }
   };
 
-  // Keyboard shortcut: Spacebar triggers voice when not typing in inputs
+  // Keyboard shortcut: Spacebar toggles voice
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement;
@@ -130,10 +92,10 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#08080a] text-[#e5e1e4] select-none font-sans">
-      {/* 1. TOP SYSTEM NAVIGATION */}
+      {/* 1. TOP SYSTEM NAVIGATION (MAY_OS ™   Globe Bell Search J) */}
       <TopNav
         persona={persona}
-        onTogglePersona={handleTogglePersona}
+        onTogglePersona={() => {}}
         centerMode={centerMode}
         onToggleCenterMode={handleToggleCenterMode}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -146,15 +108,15 @@ export default function App() {
 
       {/* 2. MAIN WORKSPACE VIEWPORT */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* LEFT DOCKED CONSOLE PANEL */}
+        {/* LEFT CONSOLE PANEL (● CONSOLE) */}
         <AnimatePresence initial={false}>
           {leftPanelOpen && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 'auto', opacity: 1 }}
+              animate={{ width: 300, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="z-20 w-72 sm:w-80 h-full shrink-0 overflow-hidden relative"
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="z-20 w-[300px] h-full shrink-0 overflow-hidden relative"
             >
               <ConsolePanel
                 persona={persona}
@@ -165,13 +127,13 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* CENTER STAGING VIEWPORT */}
+        {/* CENTER STAGING VIEWPORT (Orbs are centered here) */}
         <main
           id="center-stage-viewport"
-          className="flex-1 h-full relative flex flex-col justify-between items-center overflow-hidden bg-radial from-[#121118]/60 via-[#08080a] to-[#050507]"
+          className="flex-1 h-full relative overflow-hidden bg-[#08080a]"
         >
-          {/* Top Floating Action: SPACEBAR FOR VOICE */}
-          <div className="z-30 pt-6 sm:pt-8 pointer-events-auto">
+          {/* Top Floating Action: ● SPACEBAR FOR VOICE */}
+          <div className="absolute top-6 left-0 right-0 z-30 flex justify-center pointer-events-auto">
             <VoiceActivityOverlay
               isActive={isVoiceActive}
               onToggle={() => setIsVoiceActive(!isVoiceActive)}
@@ -180,34 +142,38 @@ export default function App() {
             />
           </div>
 
-          {/* Center Visual Canvas Area */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          {/* EXACT CENTER CANVAS (Spans absolute 100% of viewport, orb centered at width/2, height/2) */}
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center">
             {centerMode === 'SPHERE' ? (
               <FibonacciSphereCanvas
                 accentColor={accentColor}
                 glowColor={glowColor}
                 isVoiceActive={isVoiceActive}
                 voiceLevel={voiceLevel}
-                subtleDeformScale={1.1}
+                subtleDeformScale={1.05}
+                showTerrain={true}
                 onSphereClick={() => setIsVoiceActive(!isVoiceActive)}
               />
             ) : (
-              <BrainMemoryConstellation accentColor={accentColor} />
+              <BrainMemoryConstellation 
+                accentColor="#8a2be2" 
+                showTerrain={true}
+              />
             )}
           </div>
 
-          {/* Bottom Dock, Spaced Display Title, and Pagination Dots */}
-          <div className="z-30 pb-6 sm:pb-8 flex flex-col items-center gap-3 pointer-events-auto">
-            {/* Center Dock Pills (Screenshot 5 style) */}
-            {centerMode === 'SPHERE' ? (
-              <div className="flex flex-col items-center gap-2">
-                <div className="inline-flex p-1 rounded-full bg-[#12111a]/85 border border-white/10 backdrop-blur-md text-xs font-mono">
+          {/* BOTTOM DOCK & TYPOGRAPHY */}
+          <div className="absolute bottom-6 left-0 right-0 z-30 flex flex-col items-center gap-2.5 pointer-events-auto px-4">
+            {/* Dock Capsule: Chat · Console · Configure (Credits pill removed as requested) */}
+            {centerMode === 'SPHERE' && (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center gap-1 p-1 rounded-full bg-[#111118]/90 border border-white/10 backdrop-blur-md text-xs font-mono shadow-2xl">
                   <button
                     onClick={() => setRightPanelOpen(!rightPanelOpen)}
                     className={`px-4 py-1.5 rounded-full transition-colors ${
                       rightPanelOpen
-                        ? 'bg-[#221e2c] text-white font-semibold'
-                        : 'text-zinc-400 hover:text-zinc-200'
+                        ? 'bg-[#22202c] text-white font-semibold'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     Chat
@@ -216,82 +182,77 @@ export default function App() {
                     onClick={() => setLeftPanelOpen(!leftPanelOpen)}
                     className={`px-4 py-1.5 rounded-full transition-colors ${
                       leftPanelOpen
-                        ? 'bg-[#221e2c] text-white font-semibold'
-                        : 'text-zinc-400 hover:text-zinc-200'
+                        ? 'bg-[#221c16] text-[#ffb68b] border border-[#ff7a00]/30 font-semibold'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     Console
                   </button>
                   <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="px-4 py-1.5 rounded-full text-zinc-400 hover:text-zinc-200 transition-colors"
+                    className="px-4 py-1.5 rounded-full text-zinc-400 hover:text-white transition-colors"
                   >
                     Configure
                   </button>
                 </div>
+
+                {/* Sub-label helper text */}
                 <p className="text-[11px] font-mono text-zinc-500 tracking-wide">
                   Chat · Console · Configure — tap an item to open or close it
                 </p>
               </div>
-            ) : null}
+            )}
 
-            {/* Spaced Display Title (MAY or BRAIN) */}
-            <div className="text-center pt-1">
+            {/* Display Title: M A Y or B R A I N */}
+            <div className="text-center pt-0.5">
               <h1
-                className="font-mono text-xl sm:text-2xl font-bold tracking-[0.6em] sm:tracking-[0.8em] uppercase transition-colors"
-                style={{ color: accentColor }}
+                className="font-mono text-xl sm:text-2xl font-bold tracking-[0.7em] uppercase transition-colors"
+                style={{ color: centerMode === 'SPHERE' ? accentColor : '#d8b4fe' }}
               >
-                {centerMode === 'SPHERE' ? (persona === 'MAY' ? 'M A Y' : 'Z O E Y') : 'B R A I N'}
+                {centerMode === 'SPHERE' ? 'M A Y' : 'B R A I N'}
               </h1>
 
-              {/* Sub-label with navigational arrows */}
-              <div className="flex items-center justify-center gap-3 mt-1.5 text-zinc-500 text-[11px] font-mono tracking-[0.16em]">
+              {/* Subtitle with navigation arrows */}
+              <div className="flex items-center justify-center gap-3 mt-1 text-zinc-500 text-[11px] font-mono tracking-[0.18em]">
                 <button
                   onClick={() => handleNavigatePage('prev')}
                   className="hover:text-white transition-colors p-0.5"
                   title="Previous View"
                 >
-                  <ChevronLeft size={13} />
+                  <ChevronLeft size={14} />
                 </button>
                 <span className="uppercase">
                   {centerMode === 'SPHERE'
                     ? 'ORCHESTRATOR · THE VOICE OF YOUR WORLD'
-                    : 'HER MEMORY · EVERYTHING SHE KEEPS FOR YOU'}
+                    : 'MAY MEMORY · EVERYTHING STORED FOR YOU'}
                 </span>
                 <button
                   onClick={() => handleNavigatePage('next')}
                   className="hover:text-white transition-colors p-0.5"
                   title="Next View"
                 >
-                  <ChevronRight size={13} />
+                  <ChevronRight size={14} />
                 </button>
               </div>
 
-              {/* 3 Pagination dots */}
+              {/* Pagination dots (May & Brain) */}
               <div className="flex items-center justify-center gap-2 mt-2">
-                {[0, 1, 2].map((idx) => (
+                {[0, 1].map((idx) => (
                   <button
                     key={idx}
                     onClick={() => {
                       setActivePageIndex(idx);
                       if (idx === 0) {
-                        setPersona('MAY');
                         setCenterMode('SPHERE');
-                        setAccentColor('#ff7a00');
-                        setGlowColor('#ffb68b');
-                      } else if (idx === 1) {
-                        setPersona('ZOEY');
-                        setCenterMode('BRAIN');
-                        setAccentColor('#8a2be2');
-                        setGlowColor('#d8b4fe');
                       } else {
-                        setIsSettingsOpen(true);
+                        setCenterMode('BRAIN');
                       }
                     }}
+                    title={idx === 0 ? 'May 3D Sphere' : 'Brain Memory'}
                     className={`w-1.5 h-1.5 rounded-full transition-all ${
                       activePageIndex === idx
-                        ? 'w-3 bg-white shadow-[0_0_6px_#fff]'
-                        : 'bg-zinc-600 hover:bg-zinc-400'
+                        ? 'w-3 bg-[#ff7a00] shadow-[0_0_6px_#ff7a00]'
+                        : 'bg-zinc-700 hover:bg-zinc-500'
                     }`}
                   />
                 ))}
@@ -300,18 +261,18 @@ export default function App() {
           </div>
         </main>
 
-        {/* RIGHT DOCKED CHAT / TERMINAL PANEL */}
+        {/* RIGHT CHAT PANEL (● MAY) */}
         <AnimatePresence initial={false}>
           {rightPanelOpen && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 'auto', opacity: 1 }}
+              animate={{ width: 380, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="z-20 w-80 sm:w-96 h-full shrink-0 overflow-hidden relative"
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="z-20 w-[380px] h-full shrink-0 overflow-hidden relative"
             >
               <AgentChatPanel
-                persona={persona}
+                persona="MAY"
                 accentColor={accentColor}
                 onClose={() => setRightPanelOpen(false)}
                 isVoiceActive={isVoiceActive}
@@ -322,16 +283,11 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* 3. SETTINGS MODAL (Matching Screenshot 1) */}
+      {/* 3. SETTINGS MODAL */}
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => {
-          setIsSettingsOpen(false);
-          if (activePageIndex === 2) {
-            setActivePageIndex(centerMode === 'SPHERE' ? 0 : 1);
-          }
-        }}
-        persona={persona}
+        onClose={() => setIsSettingsOpen(false)}
+        persona="MAY"
         accentColor={accentColor}
         onColorChange={(hex, glow) => {
           setAccentColor(hex);
