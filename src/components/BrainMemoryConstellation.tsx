@@ -1,22 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { RotateCw, Move, ZoomIn, ZoomOut, RefreshCw, Activity, Tag } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
 
 interface BrainConstellationProps {
   accentColor?: string;
   showTerrain?: boolean;
+  isRotating?: boolean;
+  zoom?: number;
+  showLabels?: boolean;
+  isSpeaking?: boolean;
+  voiceLevel?: number;
+  resetTrigger?: number;
 }
 
 export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
   accentColor = '#8a2be2',
   showTerrain = true,
+  isRotating = true,
+  zoom = 100,
+  showLabels = true,
+  isSpeaking = false,
+  voiceLevel = 0,
+  resetTrigger = 0,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // Interaction & View state
-  const [zoom, setZoom] = useState(100);
-  const [isRotating, setIsRotating] = useState(true);
-  const [showLabels, setShowLabels] = useState(true);
 
   const stateRef = useRef({
     rotY: 0.25,
@@ -30,12 +36,21 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
     lastX: 0,
     lastY: 0,
     time: 0,
+    currentVoiceAmp: 0,
   });
 
   useEffect(() => {
     stateRef.current.isRotating = isRotating;
     stateRef.current.zoom = zoom / 100;
   }, [isRotating, zoom]);
+
+  useEffect(() => {
+    if (resetTrigger > 0) {
+      stateRef.current.rotY = 0.25;
+      stateRef.current.panX = 0;
+      stateRef.current.panY = 0;
+    }
+  }, [resetTrigger]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -105,24 +120,32 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
       // 2. CENTRAL ORBITAL SYSTEM (EXACT CENTER)
       // ==========================================
       const baseScale = Math.min(width, height) * 0.42 * state.zoom;
+      
+      // Smooth attack & decay transitions so pulse starts gently and decays seamlessly without cutting
+      const targetAmp = isSpeaking ? Math.max(voiceLevel, 0.35) * 0.5 : 0;
+      const smoothRate = targetAmp > state.currentVoiceAmp ? 0.075 : 0.038;
+      state.currentVoiceAmp += (targetAmp - state.currentVoiceAmp) * smoothRate;
+      if (state.currentVoiceAmp < 0.001) state.currentVoiceAmp = 0;
+      const voiceAmp = state.currentVoiceAmp;
 
-      // Center nebula glow
+      // Center nebula glow with voice pulsing
+      const nebulaGlowRadius = baseScale * (0.75 + voiceAmp * 0.4);
       const nebulaGrad = ctx.createRadialGradient(
         centerX,
         centerY,
         5,
         centerX,
         centerY,
-        baseScale * 0.75
+        nebulaGlowRadius
       );
-      nebulaGrad.addColorStop(0, 'rgba(138, 43, 226, 0.35)');
-      nebulaGrad.addColorStop(0.35, 'rgba(92, 28, 170, 0.15)');
-      nebulaGrad.addColorStop(0.7, 'rgba(30, 10, 60, 0.04)');
+      nebulaGrad.addColorStop(0, `rgba(168, 85, 247, ${0.38 + voiceAmp * 0.4})`);
+      nebulaGrad.addColorStop(0.35, `rgba(126, 34, 206, ${0.18 + voiceAmp * 0.25})`);
+      nebulaGrad.addColorStop(0.7, 'rgba(46, 16, 101, 0.05)');
       nebulaGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = nebulaGrad;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, baseScale * 0.75, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, nebulaGlowRadius, 0, Math.PI * 2);
       ctx.fill();
 
       // Orbits in 3D
@@ -145,16 +168,22 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
         ctx.stroke();
 
         if (showLabels) {
-          ctx.font = '10px "Space Mono", monospace';
-          ctx.fillStyle = 'rgba(192, 133, 255, 0.55)';
-          ctx.fillText(orb.label, -orb.rx + 15, 0);
+          ctx.font = '9px "Space Mono", monospace';
+          const textW = ctx.measureText(orb.label).width;
+          const lx = -orb.rx + 15;
+          ctx.fillStyle = 'rgba(10, 10, 16, 0.9)';
+          ctx.fillRect(lx - 5, -9, textW + 10, 16);
+          ctx.strokeStyle = 'rgba(192, 133, 255, 0.3)';
+          ctx.strokeRect(lx - 5, -9, textW + 10, 16);
+          ctx.fillStyle = 'rgba(216, 180, 254, 0.85)';
+          ctx.fillText(orb.label, lx, 3);
         }
 
         ctx.restore();
       });
 
       // 3. Central Wireframe Geometry (Stellated Hex Core)
-      const coreSize = baseScale * 0.19;
+      const coreSize = baseScale * (0.19 + voiceAmp * 0.06);
       const coreTime = state.time;
 
       ctx.save();
@@ -170,10 +199,10 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
         else ctx.lineTo(cx, cy);
       }
       ctx.closePath();
-      ctx.fillStyle = 'rgba(64, 16, 110, 0.6)';
+      ctx.fillStyle = `rgba(88, 28, 135, ${0.6 + voiceAmp * 0.3})`;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(216, 180, 254, 0.75)';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = `rgba(233, 213, 255, ${0.85 + voiceAmp * 0.15})`;
+      ctx.lineWidth = 1.4;
       ctx.setLineDash([]);
       ctx.stroke();
 
@@ -186,7 +215,7 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(cx, cy);
-        ctx.strokeStyle = 'rgba(216, 180, 254, 0.38)';
+        ctx.strokeStyle = 'rgba(216, 180, 254, 0.45)';
         ctx.stroke();
 
         // Inner nested points
@@ -194,54 +223,50 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
         const inX = Math.cos(inAng) * (coreSize * 0.52);
         const inY = Math.sin(inAng) * (coreSize * 0.52) * 0.8;
         ctx.beginPath();
-        ctx.arc(inX, inY, 1.8, 0, Math.PI * 2);
+        ctx.arc(inX, inY, 1.8 + voiceAmp * 1.5, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
       }
 
       ctx.restore();
 
-      // 4. Memory Nodes along Orbits (matching Image 3)
+      // 4. Memory Nodes along Orbits with clean non-overlapping labels
       const nodes = [
         {
           id: 'n1',
-          title: '**Context Summary:** User gre...',
+          title: 'Context: Active Directives',
           orbitIndex: 0,
           angle: 1.1 + state.rotY,
           color: '#ffffff',
           size: 4.5,
           isPill: true,
-          side: 'left',
         },
         {
           id: 'n2',
-          title: 'Goal the user is working towar...',
+          title: 'Goal: System Orchestration',
           orbitIndex: 0,
-          angle: 2.8 + state.rotY,
+          angle: 3.2 + state.rotY,
           color: '#d8b4fe',
           size: 4,
           isPill: true,
-          side: 'right',
         },
         {
           id: 'n3',
-          title: 'TOPICS',
+          title: 'Knowledge: Web Synthesis',
           orbitIndex: 1,
-          angle: 0.2 + state.rotY,
+          angle: 0.5 + state.rotY,
           color: '#00e5ff',
           size: 4,
-          isPill: false,
-          side: 'right',
+          isPill: true,
         },
         {
           id: 'n4',
-          title: '',
+          title: 'Memory: Persistent Telemetry',
           orbitIndex: 2,
-          angle: 4.1 + state.rotY,
+          angle: 4.3 + state.rotY,
           color: '#a855f7',
           size: 3.5,
-          isPill: false,
-          side: 'none',
+          isPill: true,
         },
       ];
 
@@ -267,46 +292,42 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
         ctx.stroke();
 
         // Node glow
-        const hGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, node.size * 3.5);
+        const glowRadius = node.size * (3.5 + voiceAmp * 2);
+        const hGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, glowRadius);
         hGrad.addColorStop(0, node.color);
         hGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = hGrad;
         ctx.beginPath();
-        ctx.arc(nx, ny, node.size * 3.5, 0, Math.PI * 2);
+        ctx.arc(nx, ny, glowRadius, 0, Math.PI * 2);
         ctx.fill();
 
         // Node circle
         ctx.beginPath();
-        ctx.arc(nx, ny, node.size, 0, Math.PI * 2);
+        ctx.arc(nx, ny, node.size + (voiceAmp > 0 ? 0.8 : 0), 0, Math.PI * 2);
         ctx.fillStyle = node.color;
         ctx.fill();
 
-        // Pill labels matching Image 3
+        // Clean, padded label pills with no text overlap
         if (showLabels && node.title) {
           ctx.save();
-          if (node.isPill) {
-            ctx.font = '11px "Geist", sans-serif';
-            const metrics = ctx.measureText(node.title);
-            const tagW = metrics.width + 18;
-            const tagH = 24;
-            const posX = node.side === 'left' ? nx - tagW - 8 : nx + 12;
-            const posY = ny - 12;
+          ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+          const metrics = ctx.measureText(node.title);
+          const tagW = metrics.width + 16;
+          const tagH = 22;
+          const isRight = nx >= centerX;
+          const posX = isRight ? nx + 10 : nx - tagW - 10;
+          const posY = ny - 11;
 
-            ctx.fillStyle = 'rgba(14, 12, 22, 0.92)';
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.roundRect(posX, posY, tagW, tagH, 6);
-            ctx.fill();
-            ctx.stroke();
+          ctx.fillStyle = 'rgba(12, 10, 20, 0.92)';
+          ctx.strokeStyle = 'rgba(192, 133, 255, 0.3)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(posX, posY, tagW, tagH, 5);
+          ctx.fill();
+          ctx.stroke();
 
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(node.title, posX + 9, posY + 16);
-          } else {
-            ctx.font = 'bold 10px "Space Mono", monospace';
-            ctx.fillStyle = node.color;
-            ctx.fillText(node.title, nx + 8, ny + 4);
-          }
+          ctx.fillStyle = '#f3e8ff';
+          ctx.fillText(node.title, posX + 8, posY + 15);
           ctx.restore();
         }
       });
@@ -389,95 +410,6 @@ export const BrainMemoryConstellation: React.FC<BrainConstellationProps> = ({
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
       />
-
-      {/* Interactive Controls Toolbar (Matching Image 3) */}
-      <div className="absolute bottom-24 sm:bottom-20 z-20 flex flex-col items-center gap-1.5 pointer-events-auto">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#12111c]/90 border border-white/10 backdrop-blur-md shadow-2xl">
-          <button
-            onClick={() => setIsRotating(!isRotating)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full transition-colors ${
-              isRotating ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <RotateCw size={12} className={isRotating ? 'animate-spin-slow' : ''} />
-            <span>Rotate</span>
-          </button>
-
-          <div className="w-[1px] h-3.5 bg-white/10" />
-
-          <button
-            onClick={() => {
-              stateRef.current.panX = 0;
-              stateRef.current.panY = 0;
-            }}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-zinc-400 hover:text-white transition-colors"
-          >
-            <Move size={12} />
-            <span>Pan</span>
-          </button>
-
-          <div className="w-[1px] h-3.5 bg-white/10" />
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setZoom((z) => Math.max(50, z - 15))}
-              className="p-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded"
-            >
-              <ZoomOut size={12} />
-            </button>
-            <span className="text-[11px] font-mono text-zinc-300 w-11 text-center">
-              {zoom}%
-            </span>
-            <button
-              onClick={() => setZoom((z) => Math.min(180, z + 15))}
-              className="p-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded"
-            >
-              <ZoomIn size={12} />
-            </button>
-          </div>
-
-          <div className="w-[1px] h-3.5 bg-white/10" />
-
-          <button
-            onClick={() => {
-              setZoom(100);
-              stateRef.current.rotY = 0.25;
-              stateRef.current.panX = 0;
-              stateRef.current.panY = 0;
-            }}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-zinc-400 hover:text-white transition-colors"
-          >
-            <RefreshCw size={11} />
-            <span className="hidden sm:inline">Reset view</span>
-          </button>
-
-          <div className="w-[1px] h-3.5 bg-white/10" />
-
-          <button
-            onClick={() => setIsRotating(!isRotating)}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-zinc-400 hover:text-white transition-colors"
-          >
-            <Activity size={12} />
-            <span>Motion</span>
-          </button>
-
-          <div className="w-[1px] h-3.5 bg-white/10" />
-
-          <button
-            onClick={() => setShowLabels(!showLabels)}
-            className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-              showLabels ? 'text-purple-300' : 'text-zinc-500'
-            }`}
-          >
-            <Tag size={12} />
-            <span className="hidden sm:inline">All labels</span>
-          </button>
-        </div>
-
-        <p className="text-[11px] text-zinc-500 font-mono tracking-wide">
-          Drag to orbit · Scroll to zoom · Click anything
-        </p>
-      </div>
     </div>
   );
 };

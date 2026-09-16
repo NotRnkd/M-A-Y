@@ -10,7 +10,10 @@ import {
   Sparkles,
   Code,
   Compass,
-  Cpu
+  Cpu,
+  Volume2,
+  VolumeX,
+  Radio
 } from 'lucide-react';
 import { PersonaType, ChatMessage } from '../types';
 
@@ -20,6 +23,9 @@ interface AgentChatPanelProps {
   onClose?: () => void;
   onVoiceTrigger?: () => void;
   isVoiceActive?: boolean;
+  onMaySpeak?: (text: string) => void;
+  isMaySpeaking?: boolean;
+  configuredModel?: string;
 }
 
 export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
@@ -28,12 +34,16 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
   onClose,
   onVoiceTrigger,
   isVoiceActive = false,
+  onMaySpeak,
+  isMaySpeaking = false,
+  configuredModel = 'deepseek/deepseek-r1:free',
 }) => {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [actionsMode, setActionsMode] = useState<'AUTO' | 'MANUAL' | 'DIRECT'>('AUTO');
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const [speechEnabled, setSpeechEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Fresh, clean chat history with no prior messages
@@ -63,7 +73,7 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
     return `Understood: "${input}". I have dispatched workers to orchestrate this task across the system telemetry. Everything is running cleanly.`;
   };
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text) return;
 
@@ -77,12 +87,52 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
       isVoice: isVoiceActive,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     if (!textToSend) setInputText('');
     setShowQuickActions(false);
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      // Send chat context to the full-stack server endpoint (which uses OpenRouter from openrouter.config.json, or Gemini)
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages.map((m) => ({
+            role: m.sender === 'user' ? 'user' : 'assistant',
+            content: m.text,
+          })),
+        }),
+      });
+
+      let reply = '';
+      if (res.ok) {
+        const data = await res.json();
+        reply = data.reply || generateMayResponse(text);
+      } else {
+        reply = generateMayResponse(text);
+      }
+
+      const agentMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        agentName: 'May',
+        text: reply,
+        timestamp: 'Just now',
+        avatarLetter: 'M',
+        isVoice: isVoiceActive,
+      };
+
+      setMessages((prev) => [...prev, agentMsg]);
+      setIsTyping(false);
+
+      // Pulse the orb and speak the reply
+      if (speechEnabled && onMaySpeak) {
+        onMaySpeak(reply);
+      }
+    } catch (err) {
+      console.warn('Chat request fallback:', err);
       const reply = generateMayResponse(text);
       const agentMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -93,9 +143,14 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
         avatarLetter: 'M',
         isVoice: isVoiceActive,
       };
+
       setMessages((prev) => [...prev, agentMsg]);
       setIsTyping(false);
-    }, 700);
+
+      if (speechEnabled && onMaySpeak) {
+        onMaySpeak(reply);
+      }
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -112,17 +167,29 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
     >
       {/* ================= HEADER (● MAY   ↻ ⤢ ● ×) ================= */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#14141e] bg-[#08080a]">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span 
-            className="w-2 h-2 rounded-full"
+            className={`w-2 h-2 rounded-full transition-all ${isMaySpeaking ? 'animate-ping' : ''}`}
             style={{ backgroundColor: accentColor, boxShadow: `0 0 6px ${accentColor}` }}
           />
-          <span className="font-mono text-xs font-bold tracking-[0.22em] text-[#e5e1e4] uppercase">
+          <span className="font-mono text-xs font-bold tracking-[0.22em] text-[#e5e1e4] uppercase shrink-0">
             MAY
           </span>
+          {isMaySpeaking && (
+            <span className="text-[10px] font-mono text-[#ffb68b] px-1.5 py-0.5 rounded bg-[#2b180d] border border-[#ff7a00]/30 animate-pulse truncate">
+              Speaking
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 text-zinc-500">
+        <div className="flex items-center gap-1.5 text-zinc-500">
+          <button 
+            title={speechEnabled ? 'May Voice Output is On (Click to Mute)' : 'May Voice Output is Muted (Click to Unmute)'}
+            onClick={() => setSpeechEnabled(!speechEnabled)}
+            className={`p-1 transition-colors ${speechEnabled ? 'text-zinc-300 hover:text-white' : 'text-zinc-600 hover:text-zinc-400'}`}
+          >
+            {speechEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+          </button>
           <button 
             title="Reset history"
             onClick={() => setMessages([])}
@@ -150,6 +217,20 @@ export const AgentChatPanel: React.FC<AgentChatPanelProps> = ({
             <X size={14} />
           </button>
         </div>
+      </div>
+
+      {/* Model config sub-header */}
+      <div className="flex items-center justify-between px-5 py-1.5 bg-[#0e0e14] border-b border-[#161622] text-[10px] font-mono text-zinc-400">
+        <div className="flex items-center gap-1.5 truncate max-w-[280px]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="text-zinc-500">Model:</span>
+          <span className="text-zinc-300 truncate" title={configuredModel}>
+            {configuredModel}
+          </span>
+        </div>
+        <span className="text-zinc-600 tracking-wider uppercase text-[9px]">
+          openrouter.config.json
+        </span>
       </div>
 
       {/* ================= CHAT FEED ================= */}

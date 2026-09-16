@@ -1,6 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  RotateCw, 
+  Move, 
+  ZoomIn, 
+  ZoomOut, 
+  RefreshCw, 
+  Tag 
+} from 'lucide-react';
 import { PersonaType, CenterViewMode } from './types';
 import { TopNav } from './components/TopNav';
 import { ConsolePanel } from './components/ConsolePanel';
@@ -27,12 +36,41 @@ export default function App() {
     'You are May, an advanced autonomous operating intelligence designed to help build clean, minimalist websites, content, strategy, and orchestration.'
   );
 
-  // Voice State
+  // User Voice Input State
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [voiceLevel, setVoiceLevel] = useState(0.4);
 
-  // Page index: 0 = SPHERE, 1 = BRAIN, 2 = SETTINGS
+  // May Speech Output & Orb Pulsing State
+  const [isMaySpeaking, setIsMaySpeaking] = useState(false);
+  const [maySpeechLevel, setMaySpeechLevel] = useState(0);
+  const speechCadenceRef = useRef<number | null>(null);
+  const speechTimeoutRef = useRef<number | null>(null);
+
+  // OpenRouter Config state (synced with openrouter.config.json)
+  const [configuredModel, setConfiguredModel] = useState('deepseek/deepseek-r1:free');
+
+  // Brain View Controls State (Cleanly integrated in dock to prevent text overlap)
+  const [brainRotating, setBrainRotating] = useState(true);
+  const [brainZoom, setBrainZoom] = useState(100);
+  const [brainShowLabels, setBrainShowLabels] = useState(true);
+  const [brainResetCount, setBrainResetCount] = useState(0);
+
+  // Page index: 0 = SPHERE, 1 = BRAIN
   const [activePageIndex, setActivePageIndex] = useState(0);
+
+  // Load configured model from /api/config on mount
+  useEffect(() => {
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.model) {
+          setConfiguredModel(data.model);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not read config status:', err);
+      });
+  }, []);
 
   const handleToggleCenterMode = () => {
     if (centerMode === 'SPHERE') {
@@ -54,6 +92,95 @@ export default function App() {
     }
   };
 
+  // Triggered whenever May sends a chat response: speaks and pulses the orb
+  const handleMaySpeak = (text: string) => {
+    handleStopSpeaking();
+
+    const cleanText = text
+      .replace(/[*_#`~[\]()<>]/g, '')
+      .replace(/\n+/g, ' ')
+      .trim();
+
+    if (!cleanText) return;
+
+    setIsMaySpeaking(true);
+
+    // Audio cadence oscillator driving real-time orb deformation and radial bloom
+    let step = 0;
+    speechCadenceRef.current = window.setInterval(() => {
+      step += 0.16;
+      const amp = 0.52 + Math.sin(step * 7.5) * 0.22 + Math.sin(step * 18) * 0.14 + (Math.random() * 0.12);
+      setMaySpeechLevel(Math.min(1, Math.max(0.35, amp)));
+    }, 80);
+
+    // Native browser speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.rate = 1.05;
+        utterance.pitch = 1.02;
+
+        const voices = window.speechSynthesis.getVoices();
+        const naturalVoice = voices.find(
+          (v) =>
+            v.lang.startsWith('en') &&
+            (v.name.includes('Female') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Victoria') ||
+              v.name.includes('Natural') ||
+              v.name.includes('Google') ||
+              v.name.includes('Karen'))
+        );
+        if (naturalVoice) utterance.voice = naturalVoice;
+
+        utterance.onend = () => {
+          handleStopSpeaking();
+        };
+        utterance.onerror = () => {
+          handleStopSpeaking();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.warn('SpeechSynthesis invocation error:', err);
+      }
+    }
+
+    // Safety fallback timer so speech & pulsing naturally complete if synthesizer is muted
+    const approxDurationMs = Math.max(2600, Math.min(8500, cleanText.length * 62));
+    speechTimeoutRef.current = window.setTimeout(() => {
+      handleStopSpeaking();
+    }, approxDurationMs);
+  };
+
+  const handleStopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // ignore
+      }
+    }
+    if (speechCadenceRef.current) {
+      clearInterval(speechCadenceRef.current);
+      speechCadenceRef.current = null;
+    }
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+    setIsMaySpeaking(false);
+    setMaySpeechLevel(0);
+  };
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      handleStopSpeaking();
+    };
+  }, []);
+
   // Keyboard shortcut: Spacebar toggles voice
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -71,14 +198,15 @@ export default function App() {
       if (e.key === 'Escape') {
         if (isSettingsOpen) setIsSettingsOpen(false);
         if (isVoiceActive) setIsVoiceActive(false);
+        if (isMaySpeaking) handleStopSpeaking();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSettingsOpen, isVoiceActive]);
+  }, [isSettingsOpen, isVoiceActive, isMaySpeaking]);
 
-  // Voice simulation
+  // Voice simulation when user is speaking
   useEffect(() => {
     if (!isVoiceActive) {
       setVoiceLevel(0);
@@ -89,6 +217,10 @@ export default function App() {
     }, 120);
     return () => clearInterval(interval);
   }, [isVoiceActive]);
+
+  // Effective voice activity and level sent to the 3D Fibonacci sphere
+  const effectiveVoiceActive = isVoiceActive || isMaySpeaking;
+  const effectiveVoiceLevel = isMaySpeaking ? maySpeechLevel : voiceLevel;
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#08080a] text-[#e5e1e4] select-none font-sans">
@@ -139,6 +271,8 @@ export default function App() {
               onToggle={() => setIsVoiceActive(!isVoiceActive)}
               accentColor={accentColor}
               personaName={persona}
+              isSpeaking={isMaySpeaking}
+              onStopSpeaking={handleStopSpeaking}
             />
           </div>
 
@@ -148,8 +282,8 @@ export default function App() {
               <FibonacciSphereCanvas
                 accentColor={accentColor}
                 glowColor={glowColor}
-                isVoiceActive={isVoiceActive}
-                voiceLevel={voiceLevel}
+                isVoiceActive={effectiveVoiceActive}
+                voiceLevel={effectiveVoiceLevel}
                 subtleDeformScale={1.05}
                 showTerrain={true}
                 onSphereClick={() => setIsVoiceActive(!isVoiceActive)}
@@ -158,13 +292,19 @@ export default function App() {
               <BrainMemoryConstellation 
                 accentColor="#8a2be2" 
                 showTerrain={true}
+                isRotating={brainRotating}
+                zoom={brainZoom}
+                showLabels={brainShowLabels}
+                resetTrigger={brainResetCount}
+                isSpeaking={isMaySpeaking}
+                voiceLevel={maySpeechLevel}
               />
             )}
           </div>
 
-          {/* BOTTOM DOCK & TYPOGRAPHY */}
+          {/* BOTTOM DOCK & TYPOGRAPHY - Stacked cleanly with zero overlap */}
           <div className="absolute bottom-6 left-0 right-0 z-30 flex flex-col items-center gap-2.5 pointer-events-auto px-4">
-            {/* Dock Capsule: Chat · Console · Configure (Credits pill removed as requested) */}
+            {/* SPHERE MODE DOCK CAPSULE: Chat · Console · Configure */}
             {centerMode === 'SPHERE' && (
               <div className="flex flex-col items-center gap-1.5">
                 <div className="flex items-center gap-1 p-1 rounded-full bg-[#111118]/90 border border-white/10 backdrop-blur-md text-xs font-mono shadow-2xl">
@@ -203,17 +343,97 @@ export default function App() {
               </div>
             )}
 
-            {/* Display Title: M A Y or B R A I N */}
+            {/* BRAIN MODE DOCK CAPSULE: Rotate · Pan · Zoom · Reset · Labels */}
+            {centerMode === 'BRAIN' && (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#12111c]/90 border border-white/10 backdrop-blur-md shadow-2xl text-xs font-mono">
+                  <button
+                    onClick={() => setBrainRotating(!brainRotating)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full transition-colors ${
+                      brainRotating
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <RotateCw size={12} className={brainRotating ? 'animate-spin-slow' : ''} />
+                    <span>Rotate</span>
+                  </button>
+
+                  <div className="w-[1px] h-3.5 bg-white/10" />
+
+                  <button
+                    onClick={() => setBrainResetCount((c) => c + 1)}
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs text-zinc-400 hover:text-white transition-colors"
+                  >
+                    <Move size={12} />
+                    <span>Pan</span>
+                  </button>
+
+                  <div className="w-[1px] h-3.5 bg-white/10" />
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setBrainZoom((z) => Math.max(50, z - 15))}
+                      className="p-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut size={12} />
+                    </button>
+                    <span className="text-[11px] font-mono text-zinc-300 w-10 text-center">
+                      {brainZoom}%
+                    </span>
+                    <button
+                      onClick={() => setBrainZoom((z) => Math.min(180, z + 15))}
+                      className="p-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded"
+                      title="Zoom In"
+                    >
+                      <ZoomIn size={12} />
+                    </button>
+                  </div>
+
+                  <div className="w-[1px] h-3.5 bg-white/10" />
+
+                  <button
+                    onClick={() => {
+                      setBrainZoom(100);
+                      setBrainResetCount((c) => c + 1);
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-zinc-400 hover:text-white transition-colors"
+                  >
+                    <RefreshCw size={11} />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+
+                  <div className="w-[1px] h-3.5 bg-white/10" />
+
+                  <button
+                    onClick={() => setBrainShowLabels(!brainShowLabels)}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                      brainShowLabels ? 'text-purple-300 font-semibold' : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <Tag size={12} />
+                    <span className="hidden sm:inline">Labels</span>
+                  </button>
+                </div>
+
+                <p className="text-[11px] font-mono text-zinc-500 tracking-wide whitespace-nowrap">
+                  Drag constellation to orbit · Scroll to zoom · Click nodes
+                </p>
+              </div>
+            )}
+
+            {/* Display Title: M A Y or B R A I N (Guaranteed zero overlap) */}
             <div className="text-center pt-0.5">
               <h1
-                className="font-mono text-xl sm:text-2xl font-bold tracking-[0.7em] uppercase transition-colors"
+                className="font-mono text-xl sm:text-2xl font-bold tracking-[0.6em] sm:tracking-[0.7em] uppercase transition-colors whitespace-nowrap select-none"
                 style={{ color: centerMode === 'SPHERE' ? accentColor : '#d8b4fe' }}
               >
                 {centerMode === 'SPHERE' ? 'M A Y' : 'B R A I N'}
               </h1>
 
               {/* Subtitle with navigation arrows */}
-              <div className="flex items-center justify-center gap-3 mt-1 text-zinc-500 text-[11px] font-mono tracking-[0.18em]">
+              <div className="flex items-center justify-center gap-3 mt-1 text-zinc-500 text-[11px] font-mono tracking-[0.18em] whitespace-nowrap select-none">
                 <button
                   onClick={() => handleNavigatePage('prev')}
                   className="hover:text-white transition-colors p-0.5"
@@ -277,6 +497,9 @@ export default function App() {
                 onClose={() => setRightPanelOpen(false)}
                 isVoiceActive={isVoiceActive}
                 onVoiceTrigger={() => setIsVoiceActive(!isVoiceActive)}
+                onMaySpeak={handleMaySpeak}
+                isMaySpeaking={isMaySpeaking}
+                configuredModel={configuredModel}
               />
             </motion.div>
           )}

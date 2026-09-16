@@ -45,6 +45,7 @@ export const FibonacciSphereCanvas: React.FC<FibonacciSphereProps> = ({
     mouseParallaxX: 0,
     mouseParallaxY: 0,
     time: 0,
+    currentVoiceAmp: 0,
   });
 
   const particlesRef = useRef<Particle3D[]>([]);
@@ -175,8 +176,15 @@ export const FibonacciSphereCanvas: React.FC<FibonacciSphereProps> = ({
 
       // Ambient radial glow behind the sphere
       const breathing = Math.sin(state.time * 1.4) * 0.04 + 1;
-      const voiceAmp = isVoiceActive ? Math.max(voiceLevel, 0.3) * 0.4 : 0;
-      const bloomRadius = baseRadius * 1.75;
+
+      // Smooth attack & decay transitions so pulse starts gently and decays seamlessly without cutting
+      const targetAmp = isVoiceActive ? Math.max(voiceLevel, 0.32) * 0.75 : 0;
+      const smoothRate = targetAmp > state.currentVoiceAmp ? 0.075 : 0.038;
+      state.currentVoiceAmp += (targetAmp - state.currentVoiceAmp) * smoothRate;
+      if (state.currentVoiceAmp < 0.001) state.currentVoiceAmp = 0;
+      const voiceAmp = state.currentVoiceAmp;
+
+      const bloomRadius = baseRadius * (1.75 + voiceAmp * 0.35);
 
       const ambientGlow = ctx.createRadialGradient(
         centerX,
@@ -186,9 +194,9 @@ export const FibonacciSphereCanvas: React.FC<FibonacciSphereProps> = ({
         centerY,
         bloomRadius
       );
-      ambientGlow.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.32 + voiceAmp * 0.3})`);
-      ambientGlow.addColorStop(0.35, `rgba(${rgbGlow.r}, ${rgbGlow.g}, ${rgbGlow.b}, ${0.14 + voiceAmp * 0.18})`);
-      ambientGlow.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05)`);
+      ambientGlow.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.35 + voiceAmp * 0.45})`);
+      ambientGlow.addColorStop(0.35, `rgba(${rgbGlow.r}, ${rgbGlow.g}, ${rgbGlow.b}, ${0.16 + voiceAmp * 0.28})`);
+      ambientGlow.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.05 + voiceAmp * 0.1})`);
       ambientGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.save();
@@ -211,13 +219,13 @@ export const FibonacciSphereCanvas: React.FC<FibonacciSphereProps> = ({
         const p = pts[i];
         const t = state.time;
 
-        // Subtle organic spherical deformation
+        // Organic spherical deformation with speech pulsing waves
         const wave1 = Math.sin(5 * p.theta + t * 1.6) * Math.cos(4 * p.phi + t * 1.1) * 0.06;
         const wave2 = Math.sin(7 * p.theta - t * 2.1 + p.seed) * 0.038;
         const wave3 = Math.cos(3 * p.phi + t * 0.75) * 0.032;
-        const voiceRipple = voiceAmp > 0 ? Math.sin(9 * (p.baseY + 1) + t * 10) * voiceAmp * 0.18 : 0;
+        const voiceRipple = voiceAmp > 0 ? Math.sin(10 * (p.baseY + 1) + t * 14) * voiceAmp * 0.28 : 0;
 
-        const deformation = (1 + (wave1 + wave2 + wave3 + voiceRipple) * subtleDeformScale) * breathing;
+        const deformation = (1 + (wave1 + wave2 + wave3 + voiceRipple) * subtleDeformScale) * (breathing + voiceAmp * 0.1);
         const r = baseRadius * deformation;
 
         const x0 = p.baseX * r;

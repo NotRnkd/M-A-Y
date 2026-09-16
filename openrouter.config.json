@@ -1,0 +1,7 @@
+{
+  "apiKey": "",
+  "model": "deepseek/deepseek-r1:free",
+  "siteUrl": "http://localhost:3000",
+  "siteName": "MAY OS",
+  "description": "Enter your OpenRouter API key and desired model here. Example models: deepseek/deepseek-r1:free, anthropic/claude-3.5-sonnet, openai/gpt-4o, meta-llama/llama-3.3-70b-instruct"
+}
